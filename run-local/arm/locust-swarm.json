@@ -1,0 +1,242 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vnetName": { "type": "string" },
+        "subnetName": { "type": "string" },
+        "workerCount": { "type": "int" }
+    },
+    "resources": [
+        {
+            "name": "swarm-network-profile",
+            "type": "Microsoft.Network/networkProfiles",
+            "apiVersion": "2020-05-01",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containerNetworkInterfaceConfigurations": [
+                    {
+                        "name": "eth0",
+                        "properties": {
+                            "ipConfigurations": [
+                                {
+                                    "name": "ipconfigprofile1",
+                                    "properties": {
+                                        "subnet": {
+                                            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "swarm",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [ "swarm-network-profile" ],
+            "properties": {
+                "containers": [
+                    {
+                        "name": "swarm-leader",
+                        "properties": {
+                            "command": [
+                                "locust",
+                                "-f",
+                                "/mnt/locust/locustfile.py",
+                                "--master",
+                                "--host",
+                                "https://apifunkyfoo.graemefoster.net/"
+                            ],
+                            "image": "locustio/locust",
+                            "ports": [
+                                {
+                                    "port": 8089
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": 0.25,
+                                    "memoryInGB": 0.5
+                                }
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "locustfilemount",
+                                    "mountPath": "/mnt/locust",
+                                    "readOnly": true
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "networkProfile": {
+                    "id": "[resourceId('Microsoft.Network/networkProfiles', 'swarm-network-profile')]"
+                },
+                "osType": "Linux",
+                "volumes": [
+                    {
+                        "name": "locustfilemount",
+                        "azureFile": {
+                            "shareName": "locust",
+                            "readOnly": true,
+                            "storageAccountName": "apimpocstg",
+                            "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', 'apimpocstg'), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value]"
+                        }
+                    }
+                ],
+                "ipAddress": {
+                    "type": "Private",
+                    "ports": [
+                        {
+                            "protocol": "Tcp",
+                            "port": 8089
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "copy": {
+                "name": "worker",
+                "count": "[parameters('workerCount')]",
+                "mode": "Parallel"
+            },
+            "name": "[concat('swarm-worker-', copyIndex())]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [ "swarm" ],
+            "properties": {
+                "containers": [
+                    {
+                        "name": "swarm-worker-1",
+                        "properties": {
+                            "command": [
+                                "locust",
+                                "-f",
+                                "/mnt/locust/locustfile.py",
+                                "--worker",
+                                "--master-host",
+                                "[concat(reference('swarm').ipAddress.ip)]"
+                            ],
+                            "image": "locustio/locust",
+                            "resources": {
+                                "requests": {
+                                    "cpu": 0.25,
+                                    "memoryInGB": 0.5
+                                }
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "locustfilemount",
+                                    "mountPath": "/mnt/locust",
+                                    "readOnly": true
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "swarm-worker-2",
+                        "properties": {
+                            "command": [
+                                "locust",
+                                "-f",
+                                "/mnt/locust/locustfile.py",
+                                "--worker",
+                                "--master-host",
+                                "[concat(reference('swarm').ipAddress.ip)]"
+                            ],
+                            "image": "locustio/locust",
+                            "resources": {
+                                "requests": {
+                                    "cpu": 0.25,
+                                    "memoryInGB": 0.5
+                                }
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "locustfilemount",
+                                    "mountPath": "/mnt/locust",
+                                    "readOnly": true
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "swarm-worker-3",
+                        "properties": {
+                            "command": [
+                                "locust",
+                                "-f",
+                                "/mnt/locust/locustfile.py",
+                                "--worker",
+                                "--master-host",
+                                "[concat(reference('swarm').ipAddress.ip)]"
+                            ],
+                            "image": "locustio/locust",
+                            "resources": {
+                                "requests": {
+                                    "cpu": 0.25,
+                                    "memoryInGB": 0.5
+                                }
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "locustfilemount",
+                                    "mountPath": "/mnt/locust",
+                                    "readOnly": true
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "swarm-worker-4",
+                        "properties": {
+                            "command": [
+                                "locust",
+                                "-f",
+                                "/mnt/locust/locustfile.py",
+                                "--worker",
+                                "--master-host",
+                                "[concat(reference('swarm').ipAddress.ip)]"
+                            ],
+                            "image": "locustio/locust",
+                            "resources": {
+                                "requests": {
+                                    "cpu": 0.25,
+                                    "memoryInGB": 0.5
+                                }
+                            },
+                            "volumeMounts": [
+                                {
+                                    "name": "locustfilemount",
+                                    "mountPath": "/mnt/locust",
+                                    "readOnly": true
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "networkProfile": {
+                    "id": "[resourceId('Microsoft.Network/networkProfiles', 'swarm-network-profile')]"
+                },
+                "osType": "Linux",
+                "volumes": [
+                    {
+                        "name": "locustfilemount",
+                        "azureFile": {
+                            "shareName": "locust",
+                            "readOnly": true,
+                            "storageAccountName": "apimpocstg",
+                            "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', 'apimpocstg'), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value]"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
